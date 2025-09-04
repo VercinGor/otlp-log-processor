@@ -74,7 +74,7 @@ func (l *dash0LogsServiceServer) Export(ctx context.Context, request *collogspb.
 	slog.InfoContext(processCtx, "Processed log export request",
 		"processed_records", processedRecords,
 		"rejected_records", rejectedRecords,
-		"processing_duration_ms", processingDuration.Milliseconds(),
+		"processing_duration_ms", processingDuration.Microseconds(),
 		"attribute_key", l.config.AttributeKey)
 
 	response := &collogspb.ExportLogsServiceResponse{}
