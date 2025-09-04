@@ -26,14 +26,12 @@ import (
 const name = "dash0.com/otlp-log-processor-backend"
 
 var (
-	tracer                 = otel.Tracer(name)
-	meter                  = otel.Meter(name)
-	logger                 = otelslog.NewLogger(name)
-	logsReceivedCounter    metric.Int64Counter
-	exportRequestsCounter  metric.Int64Counter
-	processingDurationHist metric.Float64Histogram
-	config                 *Config
-	server                 *dash0LogsServiceServer
+	tracer              = otel.Tracer(name)
+	meter               = otel.Meter(name)
+	logger              = otelslog.NewLogger(name)
+	logsReceivedCounter metric.Int64Counter
+	config              *Config
+	server              *dash0LogsServiceServer
 )
 
 func init() {
@@ -43,20 +41,6 @@ func init() {
 	logsReceivedCounter, err = meter.Int64Counter("com.dash0.homeexercise.logs.received",
 		metric.WithDescription("The number of logs received by otlp-log-processor-backend"),
 		metric.WithUnit("{log}"))
-	if err != nil {
-		panic(err)
-	}
-
-	exportRequestsCounter, err = meter.Int64Counter("com.dash0.homeexercise.export_requests.total",
-		metric.WithDescription("Total number of export requests processed"),
-		metric.WithUnit("{request}"))
-	if err != nil {
-		panic(err)
-	}
-
-	processingDurationHist, err = meter.Float64Histogram("com.dash0.homeexercise.processing_duration.seconds",
-		metric.WithDescription("Time spent processing export requests"),
-		metric.WithUnit("s"))
 	if err != nil {
 		panic(err)
 	}
@@ -72,7 +56,15 @@ func main() {
 func run() (err error) {
 	// Initialize configuration
 	config = NewConfig()
+	flag.StringVar(&config.AttributeKey, "attributeKey", config.AttributeKey, "The attribute key to count")
+	flag.DurationVar(&config.WindowDuration, "windowDuration", config.WindowDuration, "Time window duration for counting")
+	flag.StringVar(&config.ListenAddr, "listenAddr", config.ListenAddr, "The listen address")
+	flag.IntVar(&config.MaxReceiveMessageSize, "maxReceiveMessageSize", config.MaxReceiveMessageSize, "Max message size in bytes")
+	flag.DurationVar(&config.CleanupInterval, "cleanupInterval", config.CleanupInterval, "Interval for cleaning up old windows")
+	flag.IntVar(&config.MaxWindows, "maxWindows", config.MaxWindows, "Maximum number of windows to keep in memory")
 	flag.Parse()
+
+	// TODO flag validation and handling
 
 	slog.SetDefault(logger)
 	logger.Info("Starting OTLP Log Processor Backend",
@@ -86,7 +78,7 @@ func run() (err error) {
 		return
 	}
 
-	// Handle shutdown properly so nothing leaks
+	// Handle shutdown properly
 	defer func() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
@@ -123,6 +115,7 @@ func startGRPCServer() error {
 		grpc.Creds(insecure.NewCredentials()),
 	)
 
+	// added for health check/self disovery
 	reflection.Register(grpcServer)
 
 	// Register services

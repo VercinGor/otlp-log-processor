@@ -24,7 +24,7 @@ func NewAttributeExtractor(attributeKey string) *AttributeExtractor {
 func (ae *AttributeExtractor) ExtractValue(resourceLogs *otellogs.ResourceLogs,
 	scopeLogs *otellogs.ScopeLogs, logRecord *otellogs.LogRecord) string {
 
-	// 1. Check Log Record attributes first (most specific)
+	// 1. Check Log Record attributes first
 	if logRecord != nil && logRecord.GetAttributes() != nil {
 		if value := ae.findInAttributes(logRecord.GetAttributes()); value != "" {
 			return value
@@ -39,7 +39,7 @@ func (ae *AttributeExtractor) ExtractValue(resourceLogs *otellogs.ResourceLogs,
 		}
 	}
 
-	// 3. Check Resource attributes (most general)
+	// 3. Check Resource attributes
 	if resourceLogs != nil && resourceLogs.GetResource() != nil &&
 		resourceLogs.GetResource().GetAttributes() != nil {
 		if value := ae.findInAttributes(resourceLogs.GetResource().GetAttributes()); value != "" {
