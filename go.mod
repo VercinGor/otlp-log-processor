@@ -1,4 +1,4 @@
-module dash0.com/otlp-log-processor-backend
+module github.com/VercinGor/otlp-log-processor.git
 
 go 1.23.4
 

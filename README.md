@@ -101,22 +101,6 @@ You can use any OTLP-compatible client. Here's an example with curl (requires co
 grpcurl -plaintext localhost:4317 grpc.health.v1.Health/Check
 ```
 
-## Output Format
-
-The service outputs attribute counts to stdout every window duration:
-
-```text
-=== Attribute counts for window 2025-09-03T14:30:00Z (key: service.name) ===
-"payment-service" - 5
-"user-service" - 12
-"unknown" - 2
-
-=== Attribute counts for window 2025-09-03T14:30:30Z (key: service.name) ===
-"notification-service" - 3
-"payment-service" - 8
-"user-service" - 15
-```
-
 ## Key Components
 
 ### Files Structure
