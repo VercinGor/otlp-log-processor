@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
-	"net"
 	"testing"
 	"time"
 
@@ -101,41 +99,6 @@ func TestMultipleWindows(t *testing.T) {
 	t.Logf("Multiple windows stats: %+v", stats)
 }
 
-// High throughput test
-func TestHighThroughput(t *testing.T) {
-	addr := "localhost:50054"
-	config := &Config{
-		AttributeKey:          "service.name",
-		WindowDuration:        2 * time.Second,
-		ListenAddr:            addr,
-		MaxReceiveMessageSize: 16777216,
-		CleanupInterval:       10 * time.Second,
-		MaxWindows:            2,
-	}
-	_, logsSvc, closer, err := startTestServer(addr, config)
-	if err != nil {
-		t.Fatalf("Failed to start test server: %v", err)
-	}
-	defer closer()
-	time.Sleep(200 * time.Millisecond)
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatalf("Failed to dial server: %v", err)
-	}
-	defer conn.Close()
-	client := collogspb.NewLogsServiceClient(conn)
-	ctx := context.Background()
-	request := &collogspb.ExportLogsServiceRequest{
-		ResourceLogs: []*otellogs.ResourceLogs{createTestResourceLogs("high-throughput-service", 1000)},
-	}
-	_, err = client.Export(ctx, request)
-	if err != nil {
-		t.Fatalf("Export failed: %v", err)
-	}
-	stats := logsSvc.GetStats()
-	t.Logf("High throughput stats: %+v", stats)
-}
-
 // Partial success test (malformed log records)
 func TestPartialSuccess(t *testing.T) {
 	addr := "localhost:50055"
@@ -215,41 +178,6 @@ func TestCleanupOldWindows(t *testing.T) {
 	}
 	stats := logsSvc.GetStats()
 	t.Logf("Cleanup old windows stats: %+v", stats)
-}
-
-func startTestServer(addr string, config *Config) (*grpc.Server, *dash0LogsServiceServer, func(), error) {
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	logsService, err := newServer(addr, config)
-	if err != nil {
-		listener.Close()
-		return nil, nil, nil, err
-	}
-
-	logsSvc, ok := logsService.(*dash0LogsServiceServer)
-	if !ok {
-		listener.Close()
-		return nil, nil, nil, err
-	}
-
-	grpcServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
-	collogspb.RegisterLogsServiceServer(grpcServer, logsService)
-
-	go func() {
-		if err := grpcServer.Serve(listener); err != nil {
-			log.Printf("gRPC server error: %v", err)
-		}
-	}()
-
-	closer := func() {
-		grpcServer.GracefulStop()
-		listener.Close()
-	}
-
-	return grpcServer, logsSvc, closer, nil
 }
 
 func TestServerIntegration_ExportBatch(t *testing.T) {

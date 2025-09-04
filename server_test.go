@@ -2,18 +2,12 @@ package main
 
 import (
 	"context"
-	"log"
-	"net"
 	"testing"
-	"time"
 
 	collogspb "go.opentelemetry.io/proto/otlp/collector/logs/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	otellogs "go.opentelemetry.io/proto/otlp/logs/v1"
 	resourcepb "go.opentelemetry.io/proto/otlp/resource/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/test/bufconn"
 )
 
 func TestLogsServiceServer_Export(t *testing.T) {
@@ -267,65 +261,6 @@ func createTestResourceLogsWithLogAttribute(serviceName string, numRecords int) 
 	resourceLogs.ScopeLogs = append(resourceLogs.ScopeLogs, scopeLogs)
 	return resourceLogs
 }
-
-func testServer() (collogspb.LogsServiceClient, func()) {
-	addr := "localhost:4317"
-	buffer := 1024 * 1024
-	lis := bufconn.Listen(buffer)
-
-	// Helper to create ResourceLogs without service.name attribute
-
-	// Create test configuration
-	testConfig := &Config{
-		AttributeKey:          "service.name",
-		WindowDuration:        5 * time.Second, // Shorter for tests
-		ListenAddr:            addr,
-		MaxReceiveMessageSize: 16777216,
-		CleanupInterval:       30 * time.Second,
-		MaxWindows:            5,
-	}
-
-	// Create logs service
-	logsService, err := newServer(addr, testConfig)
-	if err != nil {
-		log.Printf("error creating logs service: %v", err)
-	}
-
-	baseServer := grpc.NewServer()
-	collogspb.RegisterLogsServiceServer(baseServer, logsService)
-
-	go func() {
-		if err := baseServer.Serve(lis); err != nil {
-			log.Printf("error serving server: %v", err)
-		}
-	}()
-
-	conn, err := grpc.NewClient(addr,
-		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-			return lis.Dial()
-		}), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Printf("error connecting to server: %v", err)
-	}
-
-	closer := func() {
-		// Stop logs service gracefully
-		if logsSvc, ok := logsService.(*dash0LogsServiceServer); ok {
-			logsSvc.Stop()
-		}
-
-		err := lis.Close()
-		if err != nil {
-			log.Printf("error closing listener: %v", err)
-		}
-		baseServer.Stop()
-	}
-
-	client := collogspb.NewLogsServiceClient(conn)
-
-	return client, closer
-}
-
 func BenchmarkLogProcessing(b *testing.B) {
 	ctx := context.Background()
 	client, closer := testServer()
