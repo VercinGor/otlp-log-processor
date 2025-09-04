@@ -92,7 +92,7 @@ go run ./... -attributeKey="http.method" -windowDuration=60s -listenAddr="0.0.0.
 
 ### Send test logs and healt check
 
-You can use any OTLP-compatible client. Here's an example with curl (requires converting to JSON):
+You can use any OTLP-compatible client:
 
 ```bash
 # The server accepts binary protobuf format on the gRPC endpoint
